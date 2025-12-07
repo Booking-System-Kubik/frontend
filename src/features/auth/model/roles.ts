@@ -1,7 +1,4 @@
-export type UserRole = "EMPLOYEE" | "OFFICE" | "COMPANY";
-
-export const ROLE_LABELS: Record<UserRole, string> = {
-  EMPLOYEE: "Сотрудник",
-  OFFICE: "Офис",
-  COMPANY: "Компания",
-};
+// Re-export для обратной совместимости
+// В будущем эти типы должны импортироваться из @/entities/user
+export type { UserRole } from "@/entities/user";
+export { ROLE_LABELS } from "@/entities/user";

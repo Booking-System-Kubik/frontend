@@ -1,0 +1,144 @@
+import { authenticatedRequest } from "@/shared/api/config";
+import type { UserInfo, AssignRoleRequest, RevokeRoleRequest } from "../model/types";
+import { logger } from "@/shared/lib/logger";
+
+export const usersApi = {
+  /**
+   * Получение списка всех пользователей
+   * GET /api/admin/users
+   */
+  getAllUsers: async (token: string): Promise<{
+    data?: UserInfo[];
+    error?: { message: string; status?: number };
+  }> => {
+    try {
+      logger.debug("usersApi.getAllUsers: Making request", {
+        hasToken: !!token,
+        tokenLength: token?.length,
+      });
+
+      const response = await authenticatedRequest<UserInfo[]>(
+        "/api/admin/users",
+        token,
+        { method: "GET" }
+      );
+
+      logger.debug("usersApi.getAllUsers: Response", {
+        hasData: !!response.data,
+        hasError: !!response.error,
+        errorStatus: response.error?.status,
+        errorMessage: response.error?.message,
+      });
+
+      if (response.error) {
+        return { error: response.error };
+      }
+
+      return { data: response.data };
+    } catch (error) {
+      logger.error("usersApi.getAllUsers: Exception", error);
+      return {
+        error: {
+          message: error instanceof Error ? error.message : "Неизвестная ошибка",
+        },
+      };
+    }
+  },
+
+  /**
+   * Назначение роли пользователю
+   * POST /api/admin/assign-role
+   */
+  assignRole: async (
+    data: AssignRoleRequest,
+    token: string
+  ): Promise<{
+    data?: void;
+    error?: { message: string; status?: number };
+  }> => {
+    try {
+      const response = await authenticatedRequest<void>(
+        "/api/admin/assign-role",
+        token,
+        {
+          method: "POST",
+          body: JSON.stringify(data),
+        }
+      );
+
+      if (response.error) {
+        return { error: response.error };
+      }
+
+      return { data: undefined };
+    } catch (error) {
+      return {
+        error: {
+          message: error instanceof Error ? error.message : "Неизвестная ошибка",
+        },
+      };
+    }
+  },
+
+  /**
+   * Отзыв роли у пользователя
+   * POST /api/admin/revoke-role
+   */
+  revokeRole: async (
+    data: RevokeRoleRequest,
+    token: string
+  ): Promise<{
+    data?: void;
+    error?: { message: string; status?: number };
+  }> => {
+    try {
+      const response = await authenticatedRequest<void>(
+        "/api/admin/revoke-role",
+        token,
+        {
+          method: "POST",
+          body: JSON.stringify(data),
+        }
+      );
+
+      if (response.error) {
+        return { error: response.error };
+      }
+
+      return { data: undefined };
+    } catch (error) {
+      return {
+        error: {
+          message: error instanceof Error ? error.message : "Неизвестная ошибка",
+        },
+      };
+    }
+  },
+
+  /**
+   * Удаление пользователя из организации
+   * DELETE /api/admin/users?email={email}
+   */
+  deleteUser: async (
+    email: string,
+    token: string
+  ): Promise<{ data?: void; error?: { message: string; status?: number } }> => {
+    try {
+      const endpoint = `/api/admin/users?email=${encodeURIComponent(email)}`;
+      const response = await authenticatedRequest<void>(endpoint, token, {
+        method: "DELETE",
+      });
+      if (response.error) {
+        return { error: response.error };
+      }
+      return { data: undefined };
+    } catch (error) {
+      return {
+        error: {
+          message: error instanceof Error ? error.message : "Неизвестная ошибка",
+        },
+      };
+    }
+  },
+};
+
