@@ -23,29 +23,60 @@ export const PresetsPanel: React.FC<PresetsPanelProps> = ({
               e.preventDefault();
               onPresetDragStart(preset, e.clientX, e.clientY);
             }}
-            className="p-3 bg-white border border-gray-200 cursor-grab hover:border-blue-400 hover:bg-blue-50 transition-colors"
+            className="p-3 bg-white border border-gray-200 cursor-grab hover:border-blue-400 hover:bg-blue-50 transition-colors rounded-lg"
           >
-            <div className="w-full h-12 flex items-center justify-center mb-2 bg-blue-50">
+            <div className="w-full h-12 flex items-center justify-center mb-2 bg-slate-50">
               {preset.type === "rect" ? (
                 <div
                   style={{
-                    width: (preset.width ?? 40) * 0.6,
-                    height: (preset.height ?? 30) * 0.6,
-                    background: "#3b82f6",
-                    borderRadius: "4px",
+                    width: Math.max(18, Math.min(44, (preset.width ?? 40) * 0.5)),
+                    height: Math.max(12, Math.min(28, (preset.height ?? 30) * 0.5)),
+                    background: "#e0f2fe",
+                    borderRadius: "3px",
+                    border: "1px solid #0f172a",
                   }}
                 />
               ) : (
-                <svg width={48} height={32}>
-                  <polygon
-                    points={(preset.poly || [[0, 0], [40, 0], [40, 40], [0, 40]])
-                      .map((pt) => `${pt[0] * 0.6},${pt[1] * 0.6}`)
-                      .join(" ")}
-                    fill="#3b82f6"
-                    stroke="#2563eb"
-                    strokeWidth="2"
-                  />
-                </svg>
+                (() => {
+                  const poly = preset.poly || [
+                    [0, 0],
+                    [40, 0],
+                    [40, 40],
+                    [0, 40],
+                  ];
+                  const xs = poly.map((p) => p[0]);
+                  const ys = poly.map((p) => p[1]);
+                  const minX = Math.min(...xs);
+                  const maxX = Math.max(...xs);
+                  const minY = Math.min(...ys);
+                  const maxY = Math.max(...ys);
+                  const width = maxX - minX || 1;
+                  const height = maxY - minY || 1;
+                  const boxWidth = 44;
+                  const boxHeight = 28;
+                  const scale = Math.min(boxWidth / width, boxHeight / height);
+                  const offsetX = (48 - width * scale) / 2;
+                  const offsetY = (32 - height * scale) / 2;
+
+                  const points = poly
+                    .map(([x, y]) => {
+                      const nx = (x - minX) * scale + offsetX;
+                      const ny = (y - minY) * scale + offsetY;
+                      return `${nx},${ny}`;
+                    })
+                    .join(" ");
+
+                  return (
+                    <svg width={48} height={32}>
+                      <polygon
+                        points={points}
+                        fill="#e0f2fe"
+                        stroke="#0f172a"
+                        strokeWidth={1.5}
+                      />
+                    </svg>
+                  );
+                })()
               )}
             </div>
             <div className="text-center text-xs font-medium text-gray-700">

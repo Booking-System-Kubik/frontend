@@ -9,7 +9,7 @@ import { useRoomInteraction } from "../hooks/useRoomInteraction";
 import { usePresetDrag } from "../hooks/usePresetDrag";
 import { useFileOperations } from "../hooks/useFileOperations";
 import { useCustomPreset } from "../hooks/useCustomPreset";
-import { clientToCanvasCoords } from "../lib/helpers";
+import { clientToCanvasCoords, snapPointToGrid, genId } from "../lib/helpers";
 import { LeftPanel } from "./panels/LeftPanel";
 import { BottomPanel } from "./panels/BottomPanel";
 import { OfficeCanvas } from "./canvas/OfficeCanvas";
@@ -72,6 +72,7 @@ export const OfficeConstructor: React.FC<OfficeConstructorProps> = ({
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const [copiedRoom, setCopiedRoom] = useState<Room | null>(null);
 
   const boundaryDrawing = useBoundaryDrawing();
   const {
@@ -129,6 +130,75 @@ export const OfficeConstructor: React.FC<OfficeConstructorProps> = ({
 
   const customPreset = useCustomPreset(setPresets);
 
+  // Горячие клавиши: копирование / вставка / удаление помещений в режиме редактирования
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!editMode) return;
+
+      const isCopy =
+        (e.key === "c" || e.key === "C") && (e.metaKey || e.ctrlKey);
+      const isPaste =
+        (e.key === "v" || e.key === "V") && (e.metaKey || e.ctrlKey);
+      const isDeleteKey =
+        (e.key === "Delete" || e.key === "Backspace") && !e.metaKey && !e.ctrlKey;
+
+      if (!isCopy && !isPaste && !isDeleteKey) return;
+
+      // Не мешаем вводу текста в инпутах
+      const target = e.target as HTMLElement | null;
+      if (target && ["INPUT", "TEXTAREA"].includes(target.tagName)) return;
+
+      const currentRooms = floors[currentFloor] || [];
+
+      if (isCopy) {
+        e.preventDefault();
+        const selected =
+          currentRooms.find((r) => r.id === roomInteraction.selectedRoomId) ||
+          null;
+        if (selected) {
+          setCopiedRoom(selected);
+        }
+        return;
+      }
+
+      if (isPaste && copiedRoom) {
+        e.preventDefault();
+        setFloors((prev) => {
+          const floorRooms = prev[currentFloor] || [];
+          const base =
+            floorRooms.find(
+              (r) => r.id === roomInteraction.selectedRoomId
+            ) || copiedRoom;
+
+          const offsetStep = 20;
+
+          const newRoom: Room = {
+            ...copiedRoom,
+            id: genId("r_"),
+            x: base.x + offsetStep,
+            y: base.y + offsetStep,
+          };
+
+          return {
+            ...prev,
+            [currentFloor]: [...floorRooms, newRoom],
+          };
+        });
+        return;
+      }
+
+      if (isDeleteKey && roomInteraction.selectedRoomId) {
+        e.preventDefault();
+        roomInteraction.deleteRoom(roomInteraction.selectedRoomId);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [editMode, floors, currentFloor, roomInteraction.selectedRoomId, copiedRoom, setFloors]);
+
   const handleCanvasClick = (e: React.MouseEvent<SVGSVGElement>) => {
     if (!editMode) return; // В режиме просмотра не рисуем границы
     if (draggingPreset) return;
@@ -141,7 +211,8 @@ export const OfficeConstructor: React.FC<OfficeConstructorProps> = ({
       offset,
       zoom,
     });
-    addBoundaryPoint([p.x, p.y]);
+    const snapped = snapPointToGrid(p.x, p.y);
+    addBoundaryPoint([snapped.x, snapped.y]);
   };
 
   const handleCanvasDblClick = () => {
@@ -751,6 +822,7 @@ export const OfficeConstructor: React.FC<OfficeConstructorProps> = ({
             isResizing={roomInteraction.isResizing}
             wrapperRef={wrapperRef}
             svgRef={svgRef}
+            onRenameRoom={roomInteraction.renameRoom}
             onZoomIn={zoomIn}
             onZoomOut={zoomOut}
             onResetView={resetView}
@@ -787,7 +859,9 @@ export const OfficeConstructor: React.FC<OfficeConstructorProps> = ({
         isOpen={customPreset.isModalOpen}
         modalPolyPoints={customPreset.modalPolyPoints}
         modalSvgRef={customPreset.modalSvgRef}
-        onModalClick={customPreset.handleModalClick}
+        onCanvasMouseDown={customPreset.handleModalMouseDown}
+        onCanvasMouseMove={customPreset.handleModalMouseMove}
+        onCanvasMouseUp={customPreset.handleModalMouseUp}
         onClear={customPreset.clearModalPoints}
         onCancel={customPreset.closeModal}
         onSave={customPreset.addPreset}

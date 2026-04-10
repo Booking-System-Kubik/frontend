@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Room, ID } from "../model/types";
-import { clientToCanvasCoords } from "../lib/helpers";
+import { clientToCanvasCoords, snapToGrid } from "../lib/helpers";
 
 interface UseRoomInteractionParams {
   svgRef: React.RefObject<SVGSVGElement | null>;
@@ -52,11 +52,13 @@ export const useRoomInteraction = ({
       offset,
       zoom,
     });
+    const targetX = canvasP.x - moveOffset.x;
+    const targetY = canvasP.y - moveOffset.y;
     setFloors((prev) => ({
       ...prev,
       [currentFloor]: prev[currentFloor].map((r) =>
         r.id === selectedRoomId
-          ? { ...r, x: canvasP.x - moveOffset.x, y: canvasP.y - moveOffset.y }
+          ? { ...r, x: snapToGrid(targetX), y: snapToGrid(targetY) }
           : r
       ),
     }));
@@ -86,9 +88,32 @@ export const useRoomInteraction = ({
       ...prev,
       [currentFloor]: prev[currentFloor].map((r) => {
         if (r.id !== resizeRoomId) return r;
-        const newW = Math.max(20, canvasP.x - r.x);
-        const newH = Math.max(20, canvasP.y - r.y);
-        return { ...r, width: newW, height: newH };
+        const rawW = canvasP.x - r.x;
+        const rawH = canvasP.y - r.y;
+        const snappedW = Math.max(20, snapToGrid(rawW));
+        const snappedH = Math.max(20, snapToGrid(rawH));
+
+        if (r.shape && r.shape.length > 0) {
+          const xs = r.shape.map((p) => p[0]);
+          const ys = r.shape.map((p) => p[1]);
+          const minX = Math.min(...xs);
+          const maxX = Math.max(...xs);
+          const minY = Math.min(...ys);
+          const maxY = Math.max(...ys);
+          const oldW = maxX - minX || 1;
+          const oldH = maxY - minY || 1;
+          const scaleX = snappedW / oldW;
+          const scaleY = snappedH / oldH;
+
+          const newShape = r.shape.map(([x, y]) => [
+            minX + (x - minX) * scaleX,
+            minY + (y - minY) * scaleY,
+          ]);
+
+          return { ...r, width: snappedW, height: snappedH, shape: newShape };
+        }
+
+        return { ...r, width: snappedW, height: snappedH };
       }),
     }));
   };

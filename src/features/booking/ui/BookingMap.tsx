@@ -65,12 +65,55 @@ export const BookingMap: React.FC<BookingMapProps> = ({
 
   const [zoom, setZoom] = useState<number>(1);
   const [offset, setOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const zoomRef = useRef(zoom);
+  const offsetRef = useRef(offset);
 
   const panState = useRef<{ dragging: boolean; lastX: number; lastY: number }>({
     dragging: false,
     lastX: 0,
     lastY: 0,
   });
+
+  useEffect(() => {
+    zoomRef.current = zoom;
+    offsetRef.current = offset;
+  }, [zoom, offset]);
+
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+
+      const delta = e.deltaY;
+      const factor = Math.exp(-delta / 1000);
+      const currentZoom = zoomRef.current;
+      const currentOffset = offsetRef.current;
+      const newZoom = clamp(currentZoom * factor, 0.3, 3);
+
+      const svg = svgRef.current;
+      if (!svg) {
+        setZoom(newZoom);
+        return;
+      }
+
+      const rect = svg.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const beforeX = (mx - currentOffset.x) / currentZoom;
+      const beforeY = (my - currentOffset.y) / currentZoom;
+      const newOffsetX = mx - beforeX * newZoom;
+      const newOffsetY = my - beforeY * newZoom;
+      setZoom(newZoom);
+      setOffset({ x: newOffsetX, y: newOffsetY });
+    };
+
+    wrapper.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      wrapper.removeEventListener("wheel", onWheel as EventListener);
+    };
+  }, []);
 
   const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
     e.preventDefault();
@@ -174,6 +217,7 @@ export const BookingMap: React.FC<BookingMapProps> = ({
           ref={svgRef}
           width="100%"
           height="100%"
+          onContextMenu={(e) => e.preventDefault()}
           onWheel={handleWheel}
           onMouseDown={startPan}
           onMouseMove={handlePanMove}

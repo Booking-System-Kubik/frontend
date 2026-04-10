@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import type { Room, Preset, ID } from "../../model/types";
 import { GridBackground } from "./GridBackground";
 import { BoundaryPolygon } from "./BoundaryPolygon";
 import { RoomElement } from "./RoomElement";
 import { DragOverlay } from "./DragOverlay";
 import { ZoomControls } from "../controls/ZoomControls";
+import { GRID_SIZE } from "../../lib/helpers";
 
 interface OfficeCanvasProps {
   rooms: Room[];
@@ -34,6 +35,7 @@ interface OfficeCanvasProps {
   isResizing: boolean;
   wrapperRef: React.RefObject<HTMLDivElement | null>;
   svgRef: React.RefObject<SVGSVGElement | null>;
+  onRenameRoom?: (roomId: ID, newName: string) => void;
   onZoomIn?: () => void;
   onZoomOut?: () => void;
   onResetView?: () => void;
@@ -68,11 +70,15 @@ export const OfficeCanvas: React.FC<OfficeCanvasProps> = ({
   isResizing,
   wrapperRef,
   svgRef,
+  onRenameRoom,
   onZoomIn,
   onZoomOut,
   onResetView,
   editMode = true,
 }) => {
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [draftName, setDraftName] = useState("");
+
   // Вычисляем позицию попапа рядом с выбранной комнатой
   const getPopupPosition = () => {
     if (!selectedRoom || !svgRef.current || !wrapperRef.current) return null;
@@ -140,12 +146,92 @@ export const OfficeCanvas: React.FC<OfficeCanvasProps> = ({
         {editMode && <GridBackground offset={offset} zoom={zoom} />}
 
         <g transform={`translate(${offset.x},${offset.y}) scale(${zoom})`}>
-          {isDrawingBoundary && (
-          <BoundaryPolygon
-            boundaryPoints={boundaryPoints}
-            boundaryClosed={boundaryClosed}
-            zoom={zoom}
-          />
+          {boundaryPoints.length > 0 && (
+            <BoundaryPolygon
+              boundaryPoints={boundaryPoints}
+              boundaryClosed={boundaryClosed}
+              zoom={zoom}
+            />
+          )}
+
+          {/* Разметка возможных позиций для перетаскиваемого пресета */}
+          {draggingPreset && boundaryClosed && boundaryPoints.length > 2 && (
+            <>
+              {(() => {
+                const xs = boundaryPoints.map((p) => p[0]);
+                const ys = boundaryPoints.map((p) => p[1]);
+                const minX = Math.min(...xs);
+                const maxX = Math.max(...xs);
+                const minY = Math.min(...ys);
+                const maxY = Math.max(...ys);
+
+                const presetWidth =
+                  draggingPreset.type === "rect"
+                    ? draggingPreset.width || 60
+                    : (() => {
+                        const poly = draggingPreset.poly || [[0, 0], [40, 0], [40, 40], [0, 40]];
+                        const pxs = poly.map((p) => p[0]);
+                        const pys = poly.map((p) => p[1]);
+                        return Math.max(...pxs) - Math.min(...pxs) || 40;
+                      })();
+
+                const presetHeight =
+                  draggingPreset.type === "rect"
+                    ? draggingPreset.height || 60
+                    : (() => {
+                        const poly = draggingPreset.poly || [[0, 0], [40, 0], [40, 40], [0, 40]];
+                        const pxs = poly.map((p) => p[0]);
+                        const pys = poly.map((p) => p[1]);
+                        return Math.max(...pys) - Math.min(...pys) || 40;
+                      })();
+
+                const centersX: number[] = [];
+                const centersY: number[] = [];
+
+                const startX = minX + presetWidth / 2;
+                const endX = maxX - presetWidth / 2;
+                for (let x = startX; x <= endX; x += GRID_SIZE) {
+                  centersX.push(x);
+                }
+
+                const startY = minY + presetHeight / 2;
+                const endY = maxY - presetHeight / 2;
+                for (let y = startY; y <= endY; y += GRID_SIZE) {
+                  centersY.push(y);
+                }
+
+                return (
+                  <>
+                    {centersX.map((cx) => (
+                      <line
+                        key={`v-${cx}`}
+                        x1={cx}
+                        y1={minY}
+                        x2={cx}
+                        y2={maxY}
+                        stroke="#0f172a"
+                        strokeWidth={0.5}
+                        strokeDasharray="4,4"
+                        opacity={0.25}
+                      />
+                    ))}
+                    {centersY.map((cy) => (
+                      <line
+                        key={`h-${cy}`}
+                        x1={minX}
+                        y1={cy}
+                        x2={maxX}
+                        y2={cy}
+                        stroke="#0f172a"
+                        strokeWidth={0.5}
+                        strokeDasharray="4,4"
+                        opacity={0.25}
+                      />
+                    ))}
+                  </>
+                );
+              })()}
+            </>
           )}
 
           {rooms.map((room) => (
@@ -174,8 +260,49 @@ export const OfficeCanvas: React.FC<OfficeCanvasProps> = ({
             width: '280px',
           }}
         >
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-2.5 flex items-center justify-between">
-            <h3 className="font-bold text-white text-sm truncate">{selectedRoom.name}</h3>
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-2.5 flex items-center justify-between gap-2">
+            {editMode && onRenameRoom ? (
+              isEditingName ? (
+                <input
+                  autoFocus
+                  value={draftName}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  onBlur={() => {
+                    const trimmed = draftName.trim();
+                    if (trimmed && trimmed !== selectedRoom.name) {
+                      onRenameRoom(selectedRoom.id, trimmed);
+                    }
+                    setIsEditingName(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.currentTarget.blur();
+                    }
+                    if (e.key === "Escape") {
+                      setIsEditingName(false);
+                    }
+                  }}
+                  className="flex-1 bg-white/10 border border-white/30 rounded px-2 py-1 text-xs text-white placeholder:text-white/60 focus:outline-none focus:ring-1 focus:ring-white"
+                  placeholder="Название помещения"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDraftName(selectedRoom.name);
+                    setIsEditingName(true);
+                  }}
+                  className="flex-1 text-left"
+                  title="Изменить название помещения"
+                >
+                  <h3 className="font-bold text-white text-sm truncate underline decoration-white/40 decoration-dotted underline-offset-2">
+                    {selectedRoom.name}
+                  </h3>
+                </button>
+              )
+            ) : (
+              <h3 className="font-bold text-white text-sm truncate">{selectedRoom.name}</h3>
+            )}
             {onCloseRoomInfo && (
               <button
                 onClick={onCloseRoomInfo}

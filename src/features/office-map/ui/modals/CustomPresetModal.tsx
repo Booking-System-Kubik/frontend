@@ -4,7 +4,9 @@ interface CustomPresetModalProps {
   isOpen: boolean;
   modalPolyPoints: number[][];
   modalSvgRef: React.RefObject<SVGSVGElement | null>;
-  onModalClick: (e: React.MouseEvent) => void;
+  onCanvasMouseDown: (e: React.MouseEvent) => void;
+  onCanvasMouseMove: (e: React.MouseEvent) => void;
+  onCanvasMouseUp: (e: React.MouseEvent) => void;
   onClear: () => void;
   onCancel: () => void;
   onSave: () => void;
@@ -14,7 +16,9 @@ export const CustomPresetModal: React.FC<CustomPresetModalProps> = ({
   isOpen,
   modalPolyPoints,
   modalSvgRef,
-  onModalClick,
+  onCanvasMouseDown,
+  onCanvasMouseMove,
+  onCanvasMouseUp,
   onClear,
   onCancel,
   onSave,
@@ -32,14 +36,16 @@ export const CustomPresetModal: React.FC<CustomPresetModalProps> = ({
         </div>
 
         <p className="text-sm text-gray-600 mb-4">
-          Кликайте на область ниже чтобы добавить точки. Для создания фигуры нужно минимум 3
-          точки.
+          Зажмите левую кнопку мыши и «рисуйте» фигуру как ручкой. Для создания фигуры нужно минимум 3 точки.
         </p>
 
         <div className="border-2 border-dashed border-gray-300 rounded-lg mb-4 overflow-hidden">
           <svg
             ref={modalSvgRef}
-            onClick={onModalClick}
+            onMouseDown={onCanvasMouseDown}
+            onMouseMove={onCanvasMouseMove}
+            onMouseUp={onCanvasMouseUp}
+            onMouseLeave={onCanvasMouseUp}
             width={600}
             height={300}
             className="bg-gray-50 cursor-crosshair"

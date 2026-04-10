@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { Preset, Room } from "../model/types";
-import { createRoomFromPreset, genId } from "../lib/helpers";
+import { createRoomFromPreset, genId, snapPointToGrid } from "../lib/helpers";
 import { clientToCanvasCoords } from "../lib/helpers";
 
 interface UsePresetDragParams {
@@ -59,8 +59,8 @@ export const usePresetDrag = ({
       offset,
       zoom,
     });
-
-    const newRoom = createRoomFromPreset(draggingPreset, x, y, genId);
+    const snapped = snapPointToGrid(x, y);
+    const newRoom = createRoomFromPreset(draggingPreset, snapped.x, snapped.y, genId);
     setFloors((prev) => ({
       ...prev,
       [currentFloor]: [...(prev[currentFloor] || []), newRoom],

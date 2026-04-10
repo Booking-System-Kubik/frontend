@@ -1,14 +1,9 @@
 import { toast } from "sonner";
 
-/**
- * Показать ошибку через toast
- * Используется для ошибок API, которые не связаны с формами
- */
 export const showErrorToast = (message: string, title?: string) => {
-  toast.error(title || "Ошибка", {
-    description: message,
-    duration: 5000,
-  });
+  // Отключено по требованию: не показывать тосты ошибок
+  void message;
+  void title;
 };
 
 /**

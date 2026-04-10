@@ -1,10 +1,24 @@
 import type { ID, Preset, Room } from "../model/types";
 
+export const GRID_SIZE = 20;
+
 export const genId = (prefix = ""): ID =>
   prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
 export const clamp = (v: number, a: number, b: number): number =>
   Math.max(a, Math.min(b, v));
+
+export const snapToGrid = (value: number, gridSize: number = GRID_SIZE): number =>
+  Math.round(value / gridSize) * gridSize;
+
+export const snapPointToGrid = (
+  x: number,
+  y: number,
+  gridSize: number = GRID_SIZE
+): { x: number; y: number } => ({
+  x: snapToGrid(x, gridSize),
+  y: snapToGrid(y, gridSize),
+});
 
 export interface ClientToCanvasParams {
   clientX: number;

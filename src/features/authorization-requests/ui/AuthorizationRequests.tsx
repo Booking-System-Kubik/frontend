@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useAuthStore } from "@/features/auth";
 import { workspaceAdminApi } from "@/entities/location";
 import type { RegistrationRequest } from "@/entities/location";
-import { showSuccessToast, showErrorToast } from "@/shared/lib/toast";
+import { showSuccessToast } from "@/shared/lib/toast";
 import { isWorkspaceAdmin } from "@/shared/lib/roles";
 import { Button } from "@/shared/ui/buttons";
 
@@ -67,7 +67,7 @@ export const AuthorizationRequests: React.FC = () => {
       const response = await workspaceAdminApi.approveRegistrationRequest(id, accessToken);
 
       if (response.error) {
-        showErrorToast(`Ошибка при одобрении заявки: ${response.error.message}`, "Ошибка");
+        setError(response.error.message || "Ошибка при одобрении заявки");
         return;
       }
 
@@ -96,7 +96,7 @@ export const AuthorizationRequests: React.FC = () => {
       const response = await workspaceAdminApi.rejectRegistrationRequest(id, accessToken);
 
       if (response.error) {
-        showErrorToast(`Ошибка при отклонении заявки: ${response.error.message}`, "Ошибка");
+        setError(response.error.message || "Ошибка при отклонении заявки");
         return;
       }
 
