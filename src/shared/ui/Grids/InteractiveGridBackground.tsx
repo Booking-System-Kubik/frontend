@@ -8,6 +8,7 @@ const InteractiveGridBackground: React.FC = () => {
   return (
     <div className="absolute inset-0 z-0">
       <InteractiveGridPattern
+        expandGrid={{ left: 6, top: 6 }}
         className={cn(
           "[mask-image:radial-gradient(400px_circle_at_center,white,transparent)]",
           "inset-x-0 inset-y-[-30%] h-[200%] skew-y-12"
